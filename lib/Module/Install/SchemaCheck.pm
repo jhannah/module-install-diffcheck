@@ -1,107 +1,69 @@
 package Module::Install::SchemaCheck;
 
-use warnings;
 use strict;
 
-=head1 NAME
+our @ISA;
+require Module::Install::Base;
+@ISA = qw/Module::Install::Base/;
 
-Module::Install::SchemaCheck - The great new Module::Install::SchemaCheck!
+use FindBin;
 
-=head1 VERSION
+sub schemacheck {
+    my ($self, %args) = @_;
+    print <<EOF;
+*** Module::Install::SchemaCheck
+EOF
 
-Version 0.01
+    unless ($args{diff_cmd}) {
+       $args{diff_cmd} = "svn diff";
+    }
+    unless ($args{database}) {
+       $args{database} = "mysql";
+    }
+    
+    my $root = $FindBin::Bin;
+    print "root is $root\n";
+    print "refresher is $args{refresher}\n";
+    print "schema_dir is $args{schema_dir}\n";
 
-=cut
+    $self->_run_refresher(\%args);
 
-our $VERSION = '0.01';
+    my $method = "_check_schema_$args{database}";
+    unless ($self->can($method)) {
+       die "Module::Install::SchemaCheck has not implemented $method";
+    }
+    $self->$method(\%args);
 
-
-=head1 SYNOPSIS
-
-Quick summary of what the module does.
-
-Perhaps a little code snippet.
-
-    use Module::Install::SchemaCheck;
-
-    my $foo = Module::Install::SchemaCheck->new();
-    ...
-
-=head1 EXPORT
-
-A list of functions that can be exported.  You can delete this section
-if you don't export anything, such as for a purely object-oriented module.
-
-=head1 FUNCTIONS
-
-=head2 function1
-
-=cut
-
-sub function1 {
+    print <<EOF;
+*** Module::Install::SchemaCheck finished.
+EOF
 }
 
-=head2 function2
 
-=cut
-
-sub function2 {
+sub _run_refresher {
+   my ($self, $args) = @_;
+   
+   my $cmd = $args->{refresher};
+   print "running '$cmd'\n";
+   open(my $in, "$cmd 2>&1 |");
+   while (<$in>) {
+      chomp;
+      print "   $_\n";
+   }
 }
 
-=head1 AUTHOR
 
-Jay Hannah, C<< <jay at jays.net> >>
-
-=head1 BUGS
-
-Please report any bugs or feature requests to C<bug-module-install-schemacheck at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Module-Install-SchemaCheck>.  I will be notified, and then you'll
-automatically be notified of progress on your bug as I make changes.
-
-
-
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc Module::Install::SchemaCheck
+sub _check_schema_mysql {
+   my ($self, $args) = @_;
+   
+   my $cmd = "$args->{diff_cmd} $args->{schema_dir}";
+   print "running '$cmd'\n";
+   open(my $in, "$cmd 2>&1 |");
+   while (<$in>) {
+      chomp;
+      print "   $_\n";
+   }
+}
 
 
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Module-Install-SchemaCheck>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/Module-Install-SchemaCheck>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/Module-Install-SchemaCheck>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Module-Install-SchemaCheck>
-
-=back
-
-
-=head1 ACKNOWLEDGEMENTS
-
-
-=head1 COPYRIGHT & LICENSE
-
-Copyright 2009 Jay Hannah, all rights reserved.
-
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
-
-
-=cut
-
-1; # End of Module::Install::SchemaCheck
+1;
