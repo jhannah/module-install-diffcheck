@@ -13,6 +13,56 @@ Add statements like these to your Module::Install generated Makefile.PL:
      diff_cmd   => 'svn diff Model/omnihub/Schema',
   );
 
+That's it. C<refresher> is executed, then C<diff_cmd>
+is executed and any non-benign changes found cause a fatal error.
+
+=head1 DESCRIPTION
+
+You may find this module helpful if your application software and database schemas are 
+both in a version control system that is accessible from the machine you're installing.
+
+I'll describe the specific tools we happen to be using right now, but this module will probably
+work across many versioning systems and database engines.
+
+Our software development lifecycle revolves around SVN "tags" (actually branches). 
+For any given tag, new tables may have been introduced, tables may have been 
+altered, or old tables may have been removed. We needed a quick way to make sure
+that every time we deploy a tag, the relevant database schema(s) are already in
+place. schemacheck() lists all errors and dies if it detects problems.
+
+We use both L<DBIx::Class::Schema::Loader> C<make_schema_at> and C<mysqldump>
+to store our schemas to disk. (Either one is fine. I'm not sure why we do both.)
+Our tags contain one file per database table in our SVN tag.
+
+This module should also work if your entire schema sits in a single file.
+
+This module will not help you if you want to manage your schema versions down to
+individual "ALTER TABLE" statements which transform one tag to another tag. 
+(Perhaps L<DBIx::Class::Schema::Versioned> could help you with that level of granularity?)
+
+L<DBIx::Class::Schema::Loader> C<make_schema_at> is slick. With 5 lines of code, you can 
+flush an entire database into a static Schema/ directory. Then C<svn diff> show us what, 
+if anything, has changed. See the POD for that module.
+
+Similarly, C<mysqldump> output (or whatever utility dumps C<CREATE TABLE> SQL out of your
+database) added to our SVN repository lets us run C<svn diff> and see everything that changed.
+
+So, assuming the DBA has already prepped the appropriate database changes (if any) for "sometag",
+our deployment goes like this:
+
+  svn checkout https://.../MyApp/tags/sometag MyApp
+  cd MyApp
+  perl Makefile.PL
+  make 
+  make install
+
+All done. L<Module::Install> has installed all our CPAN dependencies for us, all other custom
+log directories and what-not are ready to go, and our database schema(s) have been 
+audited against the tag.
+
+If the DBA forgot to prep the database, then perl C<Makefile.PL> dies with a report about which
+part(s) of the C<diff_cmd> results were considered fatal. 
+
 =head1 METHODS
 
 =cut
@@ -167,7 +217,8 @@ L<http://search.cpan.org/dist/Module-Install-SchemaCheck>
 
 =item * Version control
 
-L<http://github.com/jhannah/module-install-schemacheck>
+L<http://github.com/jhannah/module-install-schemacheck>, 
+L<http://svn.ali.as/cpan/trunk/Module-Install/lib/Module/Install/>
 
 =back
 
