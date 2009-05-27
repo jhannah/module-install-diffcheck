@@ -2,7 +2,7 @@ package Module::Install::SchemaCheck;
 
 =head1 NAME
 
-Module::Install::SchemaCheck - Veryify that a database schema meets expectations
+Module::Install::SchemaCheck - Verify that a database schema meets expectations
 
 =head1 SYNOPSIS
 
@@ -122,7 +122,7 @@ sub _run_refresher {
    while (<$in>) {
       chomp;
       print "   $_\n";
-      $fatal++;
+      # $fatal++;    # hmm...
    }
    close $in;
    return $fatal;
@@ -132,13 +132,14 @@ sub _run_refresher {
 sub _run_diff {
    my ($self, $args) = @_;
   
-   my $cmd = "$args->{diff_cmd} $args->{schema_dir}";
+   my $cmd = $args->{diff_cmd};
    print "running '$cmd'\n";
    my $diff = `$cmd`;
 
    my $parser = Text::Diff::Parser->new(
       Simplify => 1,
       Diff     => $diff,
+      Verbose  => 1,
    );
 
    my $fatal = 0;
@@ -152,27 +153,23 @@ sub _run_diff {
          $change->line1,
          $change->line2,
       );
-      #$msg .= sprintf("   File1: %s\n", $change->filename1);
-      #$msg .= sprintf("   Line1: %s\n", $change->line1);
-      #$msg .= sprintf("   File2: %s\n", $change->filename2);
-      #$msg .= sprintf("   Line2: %s\n", $change->line2);
-      #$msg .= sprintf("   Type:  %s\n", $change->type);
-      #$msg .= sprintf("   Size:  %s\n", $change->size);
       my $size = $change->size;
       my $show_change = 0;
+   
       foreach my $line ( 0..($size-1) ) {
-         $msg .= sprintf("      %s\n", $change->text( $line ));
+         # Huh... Only the new is available. Not the old?
+         $msg .= sprintf("      [%s]\n", $change->text( $line ));
          next if ($change->text( $line ) =~ / *#/);    # Ignore comment changes
          $show_change = 1;
          $fatal = 1;
       }
       if ($show_change) {
+         # Hmm... It would be nice if we could just kick out the unidiff here. I emailed the author.
          print $msg;
       }
    }
    return $fatal;
 }
-
 
 
 =head1 AUTHOR
@@ -181,19 +178,17 @@ Jay Hannah, C<< <jay at jays.net> >>
 
 =head1 BUGS
 
+This module makes no attempt to work on Windows. Sorry. Patches welcome.
+
 Please report any bugs or feature requests to C<bug-module-install-schemacheck at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Module-Install-SchemaCheck>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
-
-
-
 
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
     perldoc Module::Install::SchemaCheck
-
 
 You can also look for information at:
 
