@@ -180,6 +180,11 @@ Jay Hannah, C<< <jay at jays.net> >>
 
 This module makes no attempt to work on Windows. Sorry. Patches welcome.
 
+I've opened a bug report against L<Text::Diff::Parser>, which this module uses.
+L<https://rt.cpan.org/Ticket/Display.html?id=46426> 
+That bug stops C<mysqldump> diffs from being processed currectly. 
+So, for now I'm only using this against L<DBIx::Class::Schema::Loader> schemas.
+
 Please report any bugs or feature requests to C<bug-module-install-schemacheck at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Module-Install-SchemaCheck>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
