@@ -11,9 +11,6 @@ Add statements like these to your Module::Install generated Makefile.PL:
   schemacheck( 
      refresher  => 'Model/omnihub/refresh_Schema.pl', 
      diff_cmd   => 'svn diff Model/omnihub/Schema',
-     ignore_lines => [
-        qr/blah/,
-     ]
   );
 
 =head1 METHODS
@@ -22,7 +19,6 @@ Add statements like these to your Module::Install generated Makefile.PL:
 
 
 use strict;
-use FindBin;
 use Text::Diff::Parser;
 our @ISA;
 require Module::Install::Base;
@@ -44,37 +40,46 @@ sub schemacheck {
 EOF
 
     unless ($args{diff_cmd}) {
-       $args{diff_cmd} = "svn diff";
+       die "schemacheck() requires a diff_cmd argument";
     }
-    
-    my $root = $FindBin::Bin;
-    print "root is $root\n";
-    print "refresher is $args{refresher}\n";
-    print "schema_dir is $args{schema_dir}\n";
 
-    $self->_run_refresher(\%args);
-    $self->_check_schema(\%args);
+    my $fatal = 0;
+    if ($args{refresher}) {
+       $fatal += $self->_run_refresher(\%args);
+    }
+    $fatal += $self->_run_diff(\%args);
+
+    if ($fatal) {
+       print "*** Module::Install::SchemaCheck FATAL ERRORS\n";
+       exit $fatal;
+    }
 
     print <<EOF;
 *** Module::Install::SchemaCheck finished.
 EOF
+
+    return 1;     # Does Module::Install care?  
 }
 
 
 sub _run_refresher {
    my ($self, $args) = @_;
-   
+  
+   my $fatal = 0; 
    my $cmd = $args->{refresher};
    print "running '$cmd'\n";
    open(my $in, "$cmd 2>&1 |");
    while (<$in>) {
       chomp;
       print "   $_\n";
+      $fatal++;
    }
+   close $in;
+   return $fatal;
 }
 
 
-sub _check_schema {
+sub _run_diff {
    my ($self, $args) = @_;
   
    my $cmd = "$args->{diff_cmd} $args->{schema_dir}";
@@ -85,26 +90,37 @@ sub _check_schema {
       Simplify => 1,
       Diff     => $diff,
    );
+
+   my $fatal = 0;
    foreach my $change ( $parser->changes ) {
       next unless ($change->type);    # How do blanks get in here?
-      my $msg = "   SCHEMA CHANGE DETECTED!\n";
-      $msg .= sprintf("   File1: %s\n", $change->filename1);
-      $msg .= sprintf("   Line1: %s\n", $change->line1);
-      $msg .= sprintf("   File2: %s\n", $change->filename2);
-      $msg .= sprintf("   Line2: %s\n", $change->line2);
-      $msg .= sprintf("   Type:  %s\n", $change->type);
-      $msg .= sprintf("   Size:  %s\n", $change->size);
+      my $msg = sprintf(
+         "   SCHEMA CHANGE DETECTED! %s %s %s line(s) at lines %s/%s:\n",
+         $change->filename1,
+         $change->type, 
+         $change->size,
+         $change->line1,
+         $change->line2,
+      );
+      #$msg .= sprintf("   File1: %s\n", $change->filename1);
+      #$msg .= sprintf("   Line1: %s\n", $change->line1);
+      #$msg .= sprintf("   File2: %s\n", $change->filename2);
+      #$msg .= sprintf("   Line2: %s\n", $change->line2);
+      #$msg .= sprintf("   Type:  %s\n", $change->type);
+      #$msg .= sprintf("   Size:  %s\n", $change->size);
       my $size = $change->size;
       my $show_change = 0;
       foreach my $line ( 0..($size-1) ) {
-         $msg .= sprintf("   Line: %s\n", $change->text( $line ));
+         $msg .= sprintf("      %s\n", $change->text( $line ));
          next if ($change->text( $line ) =~ / *#/);    # Ignore comment changes
          $show_change = 1;
+         $fatal = 1;
       }
       if ($show_change) {
-         print "$msg\n";
+         print $msg;
       }
    }
+   return $fatal;
 }
 
 
