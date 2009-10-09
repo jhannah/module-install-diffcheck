@@ -30,7 +30,7 @@ a fatal error.
 =head1 DESCRIPTION
 
 If you use a version control system to deploy your applications you might find
-this module useful. 
+this module useful.
 
 =head1 How we check our database schemas
 
