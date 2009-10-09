@@ -24,36 +24,33 @@ Add statements like these to your Module::Install generated Makefile.PL:
   );
 
 That's it. Each C<before_diff_commands> is executed, then each C<diff_commands>
-is executed and any lines that don't match an C<ignore_lines> regex cause
+is executed and any diff output lines that don't match an C<ignore_lines> regex cause
 a fatal error.
 
 =head1 DESCRIPTION
 
-You may find this module helpful if your application software and database schemas are 
-both in a version control system that is accessible from the machine you're installing.
+If you use a version control system to deploy your applications you might find
+this module useful. 
 
-I'll describe the specific tools we happen to be using right now, but this module will probably
-work across many versioning systems and database engines.
+=head1 How we check our database schemas
 
-Our software development lifecycle revolves around SVN "tags" (actually branches). 
-For any given tag, new tables may have been introduced, tables may have been 
-altered, or old tables may have been removed. We needed a quick way to make sure
-that every time we deploy a tag, the relevant database schema(s) are already in
-place. diffcheck() lists all errors and dies if it detects problems.
+Here, I describe the specifics of how we use this where I work, in case
+you find this practical example illustrative.
+
+Where I work we commit all our database schemas into our 
+version control system. Every time we deploy a specific release it is critical that
+the RDBMS schema on that server exactly matches the schema in our version control system.
+New tables may have been introduced, tables may have been 
+altered, or old tables may have been removed. 
+diffcheck() lists all errors and dies if it detects problems.
 
 We use both L<DBIx::Class::Schema::Loader> C<make_schema_at> and C<mysqldump>
-to store our schemas to disk. (Either one is fine. I'm not sure why we do both.)
-Our tags contain one file per database table in our SVN tag.
+to store our schemas to disk. We then commit those files into our Subversion
+repository.
 
-This module should also work if your entire schema sits in a single file.
-
-This module will not help you if you want to manage your schema versions down to
-individual "ALTER TABLE" statements which transform one tag to another tag. 
-(Perhaps L<DBIx::Class::Schema::Versioned> could help you with that level of granularity?)
-
-L<DBIx::Class::Schema::Loader> C<make_schema_at> is slick. With 5 lines of code, you can 
-flush an entire database into a static Schema/ directory. Then C<svn diff> show us what, 
-if anything, has changed. See the POD for that module.
+(L<DBIx::Class::Schema::Loader> C<make_schema_at> is slick. With 5 lines of code, you can 
+flush an entire database into a static Schema/ directory. C<svn diff> shows us what, 
+if anything, has changed. See the POD for that module.)
 
 Similarly, C<mysqldump> output (or whatever utility dumps C<CREATE TABLE> SQL out of your
 database) added to our SVN repository lets us run C<svn diff> and see everything that changed.
@@ -74,10 +71,13 @@ audited against the tag.
 If the DBA forgot to prep the database, then perl C<Makefile.PL> dies with a report about which
 part(s) of the C<diff_cmd> results were considered fatal. 
 
+This module will not help you if you want to manage your schema versions down to
+individual "ALTER TABLE" statements which transform one tag to another tag. 
+(Perhaps L<DBIx::Class::Schema::Versioned> could help you with that level of granularity?)
+
 =head1 METHODS
 
 =cut
-
 
 use strict;
 use Text::Diff::Parser;
@@ -88,7 +88,7 @@ require Module::Install::Base;
 our $VERSION = '0.01';
 
 
-=head2 diffheck
+=head2 diffcheck
 
 See SYNOPSIS above.
 
@@ -121,6 +121,7 @@ EOF
 
     return 1;     # Does Module::Install care?  
 }
+
 
 
 sub _run_before_diff_commands {
@@ -158,7 +159,7 @@ sub _run_diff_commands {
       foreach my $change ( $parser->changes ) {
          next unless ($change->type);    # How do blanks get in here?
          my $msg = sprintf(
-            "   SCHEMA CHANGE DETECTED! %s %s %s line(s) at lines %s/%s:\n",
+            "   CHANGE DETECTED! %s %s %s line(s) at lines %s/%s:\n",
             $change->filename1,
             $change->type, 
             $change->size,
@@ -179,7 +180,7 @@ sub _run_diff_commands {
             $fatal = 1;
          }
          if ($show_change) {
-            # Hmm... It would be nice if we could just kick out the unidiff here. I emailed the author.
+            # Hmm... It would be nice if we could just kick out the unidiff here?
             print $msg;
          }
       }
@@ -195,11 +196,6 @@ Jay Hannah, C<< <jay at jays.net> >>
 =head1 BUGS
 
 This module makes no attempt to work on Windows. Sorry. Patches welcome.
-
-I've opened a bug report against L<Text::Diff::Parser>, which this module uses.
-L<https://rt.cpan.org/Ticket/Display.html?id=46426> 
-That bug stops C<mysqldump> diffs from being processed currectly. 
-So, for now I'm only using this against L<DBIx::Class::Schema::Loader> schemas.
 
 Please report any bugs or feature requests to C<bug-module-install-diffcheck at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Module-Install-DiffCheck>.  I will be notified, and then you'll
