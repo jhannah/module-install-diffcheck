@@ -1,20 +1,31 @@
-package Module::Install::SchemaCheck;
+package Module::Install::DiffCheck;
 
 =head1 NAME
 
-Module::Install::SchemaCheck - Verify that a database schema meets expectations
+Module::Install::DiffCheck - Run diff commands for potential trouble
 
 =head1 SYNOPSIS
 
 Add statements like these to your Module::Install generated Makefile.PL:
 
-  schemacheck( 
-     refresher  => 'Model/omnihub/refresh_Schema.pl', 
-     diff_cmd   => 'svn diff Model/omnihub/Schema',
+  diffcheck(
+     before_diff_commands => [
+        'Model/refresh_Schema.pl',
+        'Model/mysqldump.pl root SuperSecret',
+     ],
+     diff_commands => [
+        'svn diff Model',
+     ],
+     ignore_lines => [
+        qr/ *#/,              # Ignore comments
+        qr/^\-\-/,            # Ignore comments
+        qr/AUTO_INCREMENT/,   # These change all the time
+     ],
   );
 
-That's it. C<refresher> is executed, then C<diff_cmd>
-is executed and any non-benign changes found cause a fatal error.
+That's it. Each C<before_diff_commands> is executed, then each C<diff_commands>
+is executed and any lines that don't match an C<ignore_lines> regex cause
+a fatal error.
 
 =head1 DESCRIPTION
 
@@ -77,16 +88,16 @@ require Module::Install::Base;
 our $VERSION = '0.01';
 
 
-=head2 schemacheck
+=head2 diffheck
 
 See SYNOPSIS above.
 
 =cut
 
-sub schemacheck {
+sub diffcheck {
     my ($self, %args) = @_;
     print <<EOF;
-*** Module::Install::SchemaCheck
+*** Module::Install::DiffCheck
 EOF
 
     unless ($args{diff_cmd}) {
@@ -95,77 +106,82 @@ EOF
 
     my $fatal = 0;
     if ($args{refresher}) {
-       $fatal += $self->_run_refresher(\%args);
+       $fatal += $self->_run_before_diff_commands(\%args);
     }
-    $fatal += $self->_run_diff(\%args);
+    $fatal += $self->_run_diff_commands(\%args);
 
     if ($fatal) {
-       print "*** Module::Install::SchemaCheck FATAL ERRORS\n";
+       print "*** Module::Install::DiffCheck FATAL ERRORS\n";
        exit $fatal;
     }
 
     print <<EOF;
-*** Module::Install::SchemaCheck finished.
+*** Module::Install::DiffCheck finished.
 EOF
 
     return 1;     # Does Module::Install care?  
 }
 
 
-sub _run_refresher {
+sub _run_before_diff_commands {
    my ($self, $args) = @_;
   
    my $fatal = 0; 
-   my $cmd = $args->{refresher};
-   print "running '$cmd'\n";
-   open(my $in, "$cmd 2>&1 |");
-   while (<$in>) {
-      chomp;
-      print "   $_\n";
-      # $fatal++;    # hmm...
+   foreach my $cmd (@{$args->{before_diff_commands}}) {
+      print "running '$cmd'\n";
+      open(my $in, "$cmd 2>&1 |");
+      while (<$in>) {
+         chomp;
+         print "   $_\n";
+         # $fatal++;    # hmm...
+      }
+      close $in;
    }
-   close $in;
    return $fatal;
 }
 
 
-sub _run_diff {
+sub _run_diff_commands {
    my ($self, $args) = @_;
-  
-   my $cmd = $args->{diff_cmd};
-   print "running '$cmd'\n";
-   my $diff = `$cmd`;
-
-   my $parser = Text::Diff::Parser->new(
-      Simplify => 1,
-      Diff     => $diff,
-      Verbose  => 1,
-   );
-
-   my $fatal = 0;
-   foreach my $change ( $parser->changes ) {
-      next unless ($change->type);    # How do blanks get in here?
-      my $msg = sprintf(
-         "   SCHEMA CHANGE DETECTED! %s %s %s line(s) at lines %s/%s:\n",
-         $change->filename1,
-         $change->type, 
-         $change->size,
-         $change->line1,
-         $change->line2,
-      );
-      my $size = $change->size;
-      my $show_change = 0;
+ 
+   foreach my $cmd (@{$args->{diff_commands}}) {
+      print "running '$cmd'\n";
+      my $diff = `$cmd`;
    
-      foreach my $line ( 0..($size-1) ) {
-         # Huh... Only the new is available. Not the old?
-         $msg .= sprintf("      [%s]\n", $change->text( $line ));
-         next if ($change->text( $line ) =~ / *#/);    # Ignore comment changes
-         $show_change = 1;
-         $fatal = 1;
-      }
-      if ($show_change) {
-         # Hmm... It would be nice if we could just kick out the unidiff here. I emailed the author.
-         print $msg;
+      my $parser = Text::Diff::Parser->new(
+         Simplify => 1,
+         Diff     => $diff,
+         # Verbose  => 1,
+      );
+   
+      my $fatal = 0;
+      foreach my $change ( $parser->changes ) {
+         next unless ($change->type);    # How do blanks get in here?
+         my $msg = sprintf(
+            "   SCHEMA CHANGE DETECTED! %s %s %s line(s) at lines %s/%s:\n",
+            $change->filename1,
+            $change->type, 
+            $change->size,
+            $change->line1,
+            $change->line2,
+         );
+         my $size = $change->size;
+         my $show_change = 0;
+     
+         LINE:
+         foreach my $line ( 0..($size-1) ) {
+            # Huh... Only the new is available. Not the old?
+            foreach my $i (@{$args->{ignore_lines}}) {
+               next LINE if ($change->text( $line ) =~ $i);
+            }
+            $msg .= sprintf("      [%s]\n", $change->text( $line ));
+            $show_change = 1;
+            $fatal = 1;
+         }
+         if ($show_change) {
+            # Hmm... It would be nice if we could just kick out the unidiff here. I emailed the author.
+            print $msg;
+         }
       }
    }
    return $fatal;
@@ -186,14 +202,14 @@ That bug stops C<mysqldump> diffs from being processed currectly.
 So, for now I'm only using this against L<DBIx::Class::Schema::Loader> schemas.
 
 Please report any bugs or feature requests to C<bug-module-install-schemacheck at rt.cpan.org>, or through
-the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Module-Install-SchemaCheck>.  I will be notified, and then you'll
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Module-Install-DiffCheck>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
 
-    perldoc Module::Install::SchemaCheck
+    perldoc Module::Install::DiffCheck
 
 You can also look for information at:
 
@@ -201,19 +217,19 @@ You can also look for information at:
 
 =item * RT: CPAN's request tracker
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Module-Install-SchemaCheck>
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Module-Install-DiffCheck>
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
-L<http://annocpan.org/dist/Module-Install-SchemaCheck>
+L<http://annocpan.org/dist/Module-Install-DiffCheck>
 
 =item * CPAN Ratings
 
-L<http://cpanratings.perl.org/d/Module-Install-SchemaCheck>
+L<http://cpanratings.perl.org/d/Module-Install-DiffCheck>
 
 =item * Search CPAN
 
-L<http://search.cpan.org/dist/Module-Install-SchemaCheck>
+L<http://search.cpan.org/dist/Module-Install-DiffCheck>
 
 =item * Version control
 
@@ -228,5 +244,5 @@ Copyright 2009 Jay Hannah, all rights reserved.
 
 =cut
 
-1; # End of Module::Install::SchemaCheck
+1; # End of Module::Install::DiffCheck
 

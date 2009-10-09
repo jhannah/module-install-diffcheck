@@ -1,4 +1,4 @@
-Module-Install-SchemaCheck
+Module-Install-DiffCheck
 
 Checks your actual database schema against your expected meta-data.
 
@@ -18,21 +18,21 @@ SUPPORT AND DOCUMENTATION
 After installing, you can find documentation for this module with the
 perldoc command.
 
-    perldoc Module::Install::SchemaCheck
+    perldoc Module::Install::DiffCheck
 
 You can also look for information at:
 
     RT, CPAN's request tracker
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Module-Install-SchemaCheck
+        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Module-Install-DiffCheck
 
     AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/Module-Install-SchemaCheck
+        http://annocpan.org/dist/Module-Install-DiffCheck
 
     CPAN Ratings
-        http://cpanratings.perl.org/d/Module-Install-SchemaCheck
+        http://cpanratings.perl.org/d/Module-Install-DiffCheck
 
     Search CPAN
-        http://search.cpan.org/dist/Module-Install-SchemaCheck
+        http://search.cpan.org/dist/Module-Install-DiffCheck
 
     Version control
         http://github.com/jhannah/module-install-schemacheck

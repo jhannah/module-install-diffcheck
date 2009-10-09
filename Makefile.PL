@@ -3,10 +3,10 @@ use warnings;
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
-    NAME                => 'Module::Install::SchemaCheck',
+    NAME                => 'Module::Install::DiffCheck',
     AUTHOR              => 'Jay Hannah <jay@jays.net>',
-    VERSION_FROM        => 'lib/Module/Install/SchemaCheck.pm',
-    ABSTRACT_FROM       => 'lib/Module/Install/SchemaCheck.pm',
+    VERSION_FROM        => 'lib/Module/Install/DiffCheck.pm',
+    ABSTRACT_FROM       => 'lib/Module/Install/DiffCheck.pm',
     PL_FILES            => {},
     PREREQ_PM => {
         'Test::More'         => 0,
@@ -14,5 +14,5 @@ WriteMakefile(
         'Text::Diff::Parser' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
-    clean               => { FILES => 'Module-Install-SchemaCheck-*' },
+    clean               => { FILES => 'Module-Install-DiffCheck-*' },
 );
