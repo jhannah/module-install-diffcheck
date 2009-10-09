@@ -2,7 +2,7 @@ package Module::Install::DiffCheck;
 
 =head1 NAME
 
-Module::Install::DiffCheck - Run diff commands for potential trouble
+Module::Install::DiffCheck - Run diff commands looking for deployment problems
 
 =head1 SYNOPSIS
 
@@ -39,7 +39,7 @@ Our software development lifecycle revolves around SVN "tags" (actually branches
 For any given tag, new tables may have been introduced, tables may have been 
 altered, or old tables may have been removed. We needed a quick way to make sure
 that every time we deploy a tag, the relevant database schema(s) are already in
-place. schemacheck() lists all errors and dies if it detects problems.
+place. diffcheck() lists all errors and dies if it detects problems.
 
 We use both L<DBIx::Class::Schema::Loader> C<make_schema_at> and C<mysqldump>
 to store our schemas to disk. (Either one is fine. I'm not sure why we do both.)
@@ -100,12 +100,12 @@ sub diffcheck {
 *** Module::Install::DiffCheck
 EOF
 
-    unless ($args{diff_cmd}) {
-       die "schemacheck() requires a diff_cmd argument";
+    unless ($args{diff_commands}) {
+       die "diffcheck() requires a diff_commands argument";
     }
 
     my $fatal = 0;
-    if ($args{refresher}) {
+    if ($args{before_diff_commands}) {
        $fatal += $self->_run_before_diff_commands(\%args);
     }
     $fatal += $self->_run_diff_commands(\%args);
@@ -144,6 +144,7 @@ sub _run_before_diff_commands {
 sub _run_diff_commands {
    my ($self, $args) = @_;
  
+   my $fatal = 0;
    foreach my $cmd (@{$args->{diff_commands}}) {
       print "running '$cmd'\n";
       my $diff = `$cmd`;
@@ -154,7 +155,6 @@ sub _run_diff_commands {
          # Verbose  => 1,
       );
    
-      my $fatal = 0;
       foreach my $change ( $parser->changes ) {
          next unless ($change->type);    # How do blanks get in here?
          my $msg = sprintf(
@@ -201,7 +201,7 @@ L<https://rt.cpan.org/Ticket/Display.html?id=46426>
 That bug stops C<mysqldump> diffs from being processed currectly. 
 So, for now I'm only using this against L<DBIx::Class::Schema::Loader> schemas.
 
-Please report any bugs or feature requests to C<bug-module-install-schemacheck at rt.cpan.org>, or through
+Please report any bugs or feature requests to C<bug-module-install-diffcheck at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Module-Install-DiffCheck>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
@@ -233,7 +233,7 @@ L<http://search.cpan.org/dist/Module-Install-DiffCheck>
 
 =item * Version control
 
-L<http://github.com/jhannah/module-install-schemacheck>, 
+L<http://github.com/jhannah/module-install-diffcheck>, 
 L<http://svn.ali.as/cpan/trunk/Module-Install/lib/Module/Install/>
 
 =back
