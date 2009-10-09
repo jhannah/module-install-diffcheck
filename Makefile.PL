@@ -9,9 +9,9 @@ WriteMakefile(
     ABSTRACT_FROM       => 'lib/Module/Install/DiffCheck.pm',
     PL_FILES            => {},
     PREREQ_PM => {
-        'Test::More'         => 0,
-        'Module::Install'    => 0,
-        'Text::Diff::Parser' => '0.1000',  # https://rt.cpan.org/Ticket/Display.html?id=46426
+        'Test::More'            => 0,
+        'inc::Module::Install'  => 0,
+        'Text::Diff::Parser'     => '0.1000',  # https://rt.cpan.org/Ticket/Display.html?id=46426
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Module-Install-DiffCheck-*' },
