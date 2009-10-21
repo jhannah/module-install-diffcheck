@@ -14,7 +14,7 @@ Add statements like these to your Module::Install generated Makefile.PL:
         'Model/mysqldump.pl root SuperSecret',
      ],
      diff_commands => [
-        'svn diff Model',
+        'svn diff --diff-cmd diff -x "-i -b -u" Model',
      ],
      ignore_lines => [
         qr/ *#/,              # Ignore comments
@@ -24,20 +24,24 @@ Add statements like these to your Module::Install generated Makefile.PL:
   );
 
 That's it. Each C<before_diff_commands> is executed, then each C<diff_commands>
-is executed and any diff output lines that don't match an C<ignore_lines> regex cause
+is executed. Any diff output lines that don't match an C<ignore_lines> regex cause
 a fatal error.
+
+We use L<DBIx::Class::Schema::Loader>, mysqldump, and Subversion, but you should
+be able to use any version control system, RDBMS, and ORM(s) that make you happy.
+And/or you could diff other files that have nothing to do with databases.
 
 =head1 DESCRIPTION
 
 If you use a version control system to deploy your applications you might find
 this module useful.
 
-=head1 How we check our database schemas
+=head2 How we check our database schemas
 
 Here, I describe the specifics of how we use this where I work, in case
 you find this practical example illustrative.
 
-Where I work we commit all our database schemas into our 
+We commit all our database schemas into our 
 version control system. Every time we deploy a specific release it is critical that
 the RDBMS schema on that server exactly matches the schema in our version control system.
 New tables may have been introduced, tables may have been 
@@ -50,7 +54,7 @@ repository.
 
 (L<DBIx::Class::Schema::Loader> C<make_schema_at> is slick. With 5 lines of code, you can 
 flush an entire database into a static Schema/ directory. C<svn diff> shows us what, 
-if anything, has changed. See the POD for that module.)
+if anything, has changed.)
 
 Similarly, C<mysqldump> output (or whatever utility dumps C<CREATE TABLE> SQL out of your
 database) added to our SVN repository lets us run C<svn diff> and see everything that changed.
@@ -74,6 +78,7 @@ part(s) of the C<diff_cmd> results were considered fatal.
 This module will not help you if you want to manage your schema versions down to
 individual "ALTER TABLE" statements which transform one tag to another tag. 
 (Perhaps L<DBIx::Class::Schema::Versioned> could help you with that level of granularity?)
+We don't get that fancy where I work.
 
 =head1 METHODS
 
