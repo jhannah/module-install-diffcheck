@@ -90,7 +90,7 @@ our @ISA;
 require Module::Install::Base;
 @ISA = qw/Module::Install::Base/;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 
 =head2 diffcheck
@@ -241,7 +241,7 @@ L<http://svn.ali.as/cpan/trunk/Module-Install/lib/Module/Install/>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009 Jay Hannah, all rights reserved.
+Copyright 2009-2013 Jay Hannah, all rights reserved.
 
 =cut
 
